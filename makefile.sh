@@ -7,6 +7,7 @@ export SONAR_PROJECT_KEY="${SONAR_PROJECT_KEY:-$(basename "$(pwd)")}"
 export SONAR_GITROOT=${SONAR_GITROOT:-"$(pwd)"}
 export SONAR_SOURCE_PATH=${SONAR_SOURCE_PATH:-"."}
 export SONAR_METRICS_PATH=${SONAR_METRICS_PATH:-"./sonar-metrics.json"}
+export SONAR_OPTIONS=${SONAR_OPTIONS:-""}
 export SONAR_EXTENSION_DIR="${HOME}/.sonarless/extensions"
 
 export DOCKER_SONAR_CLI=${DOCKER_SONAR_CLI:-"sonarsource/sonar-scanner-cli:11.3"}
@@ -43,6 +44,7 @@ function help() {
     echo ''
     echo "${CLI_NAME} scan        : to scan all code in current directory. Sonarqube Service will be started"
     echo "${CLI_NAME} results     : show scan results and download the metric json (sonar-metrics.json) in current directory"
+    echo "${CLI_NAME} reindex     : to reindex the issues in the sonarqube database"
     echo ''
     echo "${CLI_NAME} start       : start SonarQube Service docker instance with creds: admin/sonarless"
     echo "${CLI_NAME} stop        : stop SonarQube Service docker instance"
@@ -122,7 +124,7 @@ function scan() {
     docker run --rm --network "${CLI_NAME}" \
         -e SONAR_HOST_URL="http://${SONAR_INSTANCE_NAME}:9000"  \
         -e SONAR_TOKEN="${SONAR_TOKEN}" \
-        -e SONAR_SCANNER_OPTS="-Dsonar.projectKey=${SONAR_PROJECT_NAME} -Dsonar.sources=${SONAR_SOURCE_PATH}" \
+        -e SONAR_SCANNER_OPTS="-Dsonar.projectKey=${SONAR_PROJECT_NAME} -Dsonar.sources=${SONAR_SOURCE_PATH} ${SONAR_OPTIONS}" \
         -v "${SONAR_GITROOT}:/usr/src" \
         "${DOCKER_SONAR_CLI}";
     SCAN_RET_CODE="$?"
@@ -153,6 +155,26 @@ function results() {
         | jq -r > "${SONAR_GITROOT}/${SONAR_METRICS_PATH}"
     cat "${SONAR_GITROOT}/${SONAR_METRICS_PATH}"
     echo "Scan results written to  ${SONAR_GITROOT}/${SONAR_METRICS_PATH}"
+}
+
+function reindex() {
+    curl -X POST -u "admin:Son@rless123" "http://localhost:${SONAR_INSTANCE_PORT}/api/issues/reindex" -d "project=${SONAR_PROJECT_NAME}"
+    LOG_FILE="/opt/sonarqube/logs/web.log"
+    TIMEOUT=300
+    COUNT=0
+
+    echo "⏳ Waiting for reindexing..."
+
+    while [ $COUNT -lt $TIMEOUT ]; do
+      if grep -q "Indexing completed" "$LOG_FILE"; then
+        echo "✅ Reindexing completed in logs."
+        exit 0
+      fi
+      sleep 1
+      COUNT=$((COUNT + 1))
+    done
+
+    echo "⛔ Timeout after $TIMEOUT seconds checking reindexing completion in logs."
 }
 
 function docker-deps-get() {
