@@ -54,7 +54,7 @@ function fetch_and_append_issues() {
   do
     # Include the additionnal_sonarless_api_parameters in the URL
     RESPONSE=$(curl -s -u "admin:Son@rless123" \
-      "http://localhost:${SONAR_PROJECT_NAME}/api/issues/search?componentKeys=${SONAR_PROJECT_NAME}&ps=500&p=$PAGE&s=SEVERITY&asc=false$additionnal_sonarless_api_parameters")
+      "http://localhost:${SONAR_INSTANCE_PORT}/api/issues/search?componentKeys=${SONAR_PROJECT_NAME}&ps=500&p=$PAGE&s=SEVERITY&asc=false$additionnal_sonarless_api_parameters")
 
     # Loop through each issue in the response
     echo "$RESPONSE" | jq -c '.issues[]?' | while IFS= read -r issue; do
@@ -65,7 +65,16 @@ function fetch_and_append_issues() {
     done
 
     # Check if there are more pages to fetch
-    if [ "$(echo "$RESPONSE" | jq '.paging.total')" -le $(("$PAGE" * 500)) ]; then
+    total=$(echo "$RESPONSE" | jq -r '.paging.total')
+    
+    # Make sure we have a valid numeric value
+    if [[ ! "$total" =~ ^[0-9]+$ ]]; then
+      # If total is not a valid number (null, empty, or non-numeric), exit the loop
+      break
+    fi
+    
+    # If we've fetched all pages, exit the loop
+    if [ "$total" -le $(("$PAGE" * 500)) ]; then
       break
     fi
 
@@ -83,7 +92,7 @@ function create_pr_hotspots_report_json() {
   while read -r CREATED_AT AUTHOR_EMAIL; do
     FORMATTED_CREATED_AT=$(date -d "$CREATED_AT" +"%Y-%m-%dT%H:%M:%S%z")
     matching_entries=$(jq "[.[] | select(.author == \"$AUTHOR_EMAIL\" and .creationDate == \"$FORMATTED_CREATED_AT\")]" "$input_hotspots_filename")
-    echo "${matching_entries:-[]}" | jq -c '.[]' >> "$output_report_filename"
+    echo "${matching_entries:-[]}" | jq -r 'if length==0 then empty else map(@json) | join(",") end' >> "$output_report_filename"
   done < "$commit_data_filename"
   echo "]" >> "$output_report_filename"
 }
@@ -92,11 +101,14 @@ function create_n_days_hotspots_report_json() {
   local input_hotspots_filename="$1"
   local output_report_filename="$2"
   local n_days="$3"
+  local n_days_num=${n_days%d}
 
-  cutoff_date=$(date -d "$n_days days ago" +"%Y-%m-%dT%H:%M:%S%z")
+  cutoff_date=$(date -d "$n_days_num days ago" +"%Y-%m-%dT%H:%M:%S%z")
+  echo "Cutoff date: $cutoff_date"
   {
-    echo "[" > "$output_report_filename";
-    jq -c "[.[] | select(.creationDate >= \"$cutoff_date\")] | .[]" "$input_hotspots_filename";
+    echo "[";
+    matching_entries=$(jq "[.[] | select(.creationDate >= \"$cutoff_date\")]" "$input_hotspots_filename");
+    echo "${matching_entries:-[]}" | jq -r 'if length==0 then empty else map(@json) | join(",") end';
     echo "]";
   } > "$output_report_filename"
 }
@@ -117,17 +129,27 @@ function fetch_and_append_hotspots() {
   while :
     do
       RESPONSE=$(curl -s -u "admin:Son@rless123" \
-        "http://localhost:${SONAR_PROJECT_NAME}/api/hotspots/search?projectKey=${SONAR_PROJECT_NAME}&ps=500&p=$PAGE")
+        "http://localhost:${SONAR_INSTANCE_PORT}/api/hotspots/search?projectKey=${SONAR_PROJECT_NAME}&ps=500&p=$PAGE")
 
       # Loop through each hotspot in the response
       echo "$RESPONSE" | jq -c '.hotspots[]?' | while IFS= read -r hotspot; do
-      if grep -m1 '[^[]' "$hotspots_filename" >/dev/null; then
+        if grep -m1 '[^[]' "$hotspots_filename" >/dev/null; then
           echo "," >> "$hotspots_filename"
         fi
         echo "$hotspot" >> "$hotspots_filename"
       done
 
-      if [ "$(echo "$RESPONSE" | jq '.paging.total')" -le $(("$PAGE" * 500)) ]; then
+      # Check if there are more pages to fetch
+      total=$(echo "$RESPONSE" | jq -r '.paging.total')
+      
+      # Make sure we have a valid numeric value
+      if [[ ! "$total" =~ ^[0-9]+$ ]]; then
+        # If total is not a valid number (null, empty, or non-numeric), exit the loop
+        break
+      fi
+      
+      # If we've fetched all pages, exit the loop
+      if [ "$total" -le $(("$PAGE" * 500)) ]; then
         break
       fi
       PAGE=$(("$PAGE" + 1))

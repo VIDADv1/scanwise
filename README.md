@@ -142,6 +142,17 @@ jobs:
           echo "# of vulnerabilities = ${VULN}"
           [ ${VULN} -eq "0" ]
 ```
+# Sonarless Code Analysis
+
+SonarQube Scan, Analysis Summary, and Reports on GitHub Action without a dedicated hosted SonarQube Server.
+
+## Tests
+
+Le projet comprend des tests unitaires et d'intégration pour garantir la qualité du code et le bon fonctionnement de l'action.
+
+### Exécuter les tests
+
+Pour exécuter tous les tests :
 
 ## Options to change local sonarqube server port
 Just in case your local machine/GHA container need to use the default port of `9234`

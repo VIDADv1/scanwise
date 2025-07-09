@@ -1,7 +1,11 @@
 name: Test
 
 on:
+  workflow_dispatch:
   pull_request:
+    branches:
+      - main
+      - releases/*
   push:
     branches:
       - main
@@ -22,7 +26,7 @@ jobs:
 
       - name: Sonarless install test - from internet
         run: |
-          cp ./install.sh /tmp
+          cp ./scripts/install.sh /tmp
           cd /tmp
           cat ./install.sh | bash
 
@@ -40,7 +44,7 @@ jobs:
 
       - name: Sonarless install test - from git
         run: |
-          cat ./install.sh | bash
+          cat ./scripts/install.sh | bash
 
       - name: Check Install
         run: |
@@ -61,52 +65,121 @@ jobs:
             echo "sonarless scriptlet removed - good"
           fi
 
-  sonarless-action-test:
+  sonarless-action-integration-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Create a dummy pre-scan script (if path is used)
+        run: |
+          echo '#!/bin/bash' > /tmp/myscript.sh
+          echo 'echo "Running pre-scan script!"' >> /tmp/myscript.sh
+          chmod +x /tmp/myscript.sh
+
       - name: Sonarless Scan
+        id: sonar
         uses: ./
         with:
-          sonar-source-path: '.'
+          sonar-source-path: 'integration-test/src/main/java'
           sonar-metrics-path: './blahblah.json'
           sonar-instance-port: '9999'
+          pre-scan-script: '/tmp/myscript.sh'
+          new-code-n-days: '15d'
+          reports-scopes: '["overall","new"]'
+          reports-extensions: '["md","html"]'
+          reports-retention-days: '1'
+
+      # Vérifie le setup (step id: setup)
+      - name: Check setup outputs
+        run: |
+          echo "Started: ${{ steps.sonar.outputs.started }}"
+          if [ ! -d reports ]; then echo "::error::reports dir not found"; exit 1; fi
+          if [ ! -d reports/overall ]; then echo "::error::reports/overall dir not found"; exit 1; fi
+          if [ ! -d reports/new ]; then echo "::error::reports/new dir not found"; exit 1; fi
 
       - name: Check Sonar Metrics
         run: |
-          echo "Checking for 0 vulnerabilities in Sonar Metrics JSON"
-          VULN=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "vulnerabilities").value')
-          echo "# of vulnerabilities = ${VULN}"
-          [ "${VULN}" -eq "0" ]
+          echo "Checking for 38 lines in Sonar Metrics JSON"
+          LINES=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "ncloc").value')
+          [ "${LINES}" -eq "38" ]
 
-          echo "Checking for any issues <= 3 in Sonar Metrics JSON"
+          echo "Checking for 10 issues in Sonar Metrics JSON"
           ISSUES=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "open_issues").value')
-          echo "# of issues = ${ISSUES}"
-          [ "${ISSUES}" -le 3 ]
+          [ "${ISSUES}" -eq "10" ]
+          
+          echo "Checking for 1 vulnerability in Sonar Metrics JSON"
+          VULN=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "vulnerabilities").value')
+          [ "${VULN}" -eq "1" ]
 
-  sonarless-action-test-on-main:
+          echo "Checking for 3 bugs in Sonar Metrics JSON"
+          BUGS=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "bugs").value')
+          [ "${BUGS}" -eq "3" ]
+
+          echo "Checking for 6 code smells in Sonar Metrics JSON"
+          SMELLS=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "code_smells").value')
+          [ "${SMELLS}" -eq "6" ]
+
+          echo "Checking for 3 security hotspots in Sonar Metrics JSON"
+          HOTSPOTS=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "security_hotspots").value')
+          [ "${HOTSPOTS}" -eq "3" ]
+
+      # Vérifie la génération de rapport overall
+      - name: Check overall report
+        run: |
+          if [ ! -f reports/overall/issues-report.md ]; then
+            echo "::error::Overall issues-report.md missing"
+            exit 1
+          fi
+          if [ ! -f reports/overall/issues-report.html ]; then
+            echo "::error::Overall issues-report.html missing"
+            exit 1
+          fi
+          echo "Overall reports present"
+
+      # Vérifie la génération de rapport new
+      - name: Check new code report
+        run: |
+          if [ ! -f reports/new/issues-report.md ]; then
+            echo "::error::New code issues-report.md missing"
+            exit 1
+          fi
+          if [ ! -f reports/new/issues-report.html ]; then
+            echo "::error::New code issues-report.html missing"
+            exit 1
+          fi
+          echo "New code reports present"
+
+      # Vérifie la sortie summary
+      - name: Check summary output
+        run: |
+          summary="${{ steps.sonar.outputs.sonar-analysis-summary }}"
+          echo "$summary" | grep -q "# 🌟 \*\*Sonarless Analysis Summary for sonarless-plus\*\* 🌟"
+          echo "$summary" | grep -q "\*\*📊 Lines of Code (LoC):\*\* 38"
+          echo "$summary" | grep -q "\*\*💡 Code Smells:\*\* 6"
+          echo "$summary" | grep -q "\*\*🐞 Bugs:\*\* 3"
+          echo "$summary" | grep -q "\*\*🔥 Security Hotspots:\*\* 3"
+
+      # Vérifie les artefacts uploadés
+      - name: Check artifacts uploaded
+        run: |
+          echo "Overall artifact id: ${{ steps.sonar.outputs.sonar-overall-code-reports-artifact-id }}"
+          echo "New code artifact id: ${{ steps.sonar.outputs.sonar-new-code-reports-artifact-id }}"
+          # Just check non-empty
+          if [ -z "${{ steps.sonar.outputs.sonar-overall-code-reports-artifact-id }}" ]; then exit 1; fi
+          if [ -z "${{ steps.sonar.outputs.sonar-new-code-reports-artifact-id }}" ]; then exit 1; fi
+
+  sonarless-action-unit-test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Sonarless Scan
-        uses: gitricko/sonarless@main
-        with:
-          sonar-source-path: '.'
-          sonar-metrics-path: './blahblah.json'
-          sonar-instance-port: '9999'
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
 
-      - name: Check Sonar Metrics
+      - name: Run tests
         run: |
-          echo "Checking for 0 vulnerabilities in Sonar Metrics JSON"
-          VULN=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "vulnerabilities").value')
-          echo "# of vulnerabilities = ${VULN}"
-          [ "${VULN}" -eq "0" ]
-
-          echo "Checking for any issues <= 3 in Sonar Metrics JSON"
-          ISSUES=$(cat ./blahblah.json | jq -r '.component.measures[] | select(.metric == "open_issues").value')
-          echo "# of issues = ${ISSUES}"
-          [ "${ISSUES}" -le 3 ]
+          chmod +x ./scripts/tests/run_tests.sh
+          ./scripts/tests/run_tests.sh

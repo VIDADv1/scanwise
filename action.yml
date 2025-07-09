@@ -37,29 +37,36 @@ inputs:
   new-code-n-days:
     description: >
       Specifies the number of days to define the 'New Code' period relative to the current date.
+      Ex. value: '3d'
       Only used in BRANCH mode
     required: false
-    default: '30'
+    default: '30d'
   reports-scopes:
     description: >
       Comma separated list of SonarQube Reports to generate.
-      Available values: ['overall','new'].
+      Available values:
+        - overall
+        - new
       Ex. values:
-       - ['overall', 'new']
-       - ['new']
-       - []
+        - '["overall", "new"]'
+        - '["new"]'
+        - '[]'
     required: false
-    default: "[]"
+    default: '[]'
   reports-extensions:
     description: >
       Comma separated list of SonarQube Report Types.
-      Available values: ['md','html','pdf', 'json']
+      Available values:
+        - md
+        - html
+        - json
+        - pdf
       Ex. values:
-       - ['md','html']
-       - ['json']
-       - []
+       - '["md","html"]'
+       - '["json"]'
+       - '[]'
     required: false
-    default: "['html']"
+    default: '["html"]'
   reports-retention-days:
     description: "How many days are the reports available in github artifacts."
     required: false
@@ -71,14 +78,9 @@ runs:
     - name: Guess the execution mode (BRANCH or PR)
       id: setup
       env:
-        GH_TOKEN: ${{ github.token }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         echo "started=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
-
-        # Create reports output directory
-        mkdir reports
-        mkdir reports/overall
-        mkdir reports/new
 
         if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
           echo "mode=BRANCH" >> $GITHUB_OUTPUT
@@ -88,13 +90,11 @@ runs:
           echo "mode=PR" >> $GITHUB_OUTPUT
           echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           echo "branch_ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-
-          PR_COMMITS_DATA=$(gh pr view ${{ steps.setup.outputs.pr_number }} --json commits --jq '.commits[] | "\(.committedDate) \(.authors[].email)"')
-          echo "$PR_COMMITS_DATA" > pr-commits-data.txt
         fi
 
-        chmod +x $ACTION_PATH/fetch-reports.sh
-        chmod +x $ACTION_PATH/generate-summary-and-reports.sh
+        chmod +x $ACTION_PATH/scripts/makefile.sh
+        chmod +x $ACTION_PATH/scripts/fetch-reports.sh
+        chmod +x $ACTION_PATH/scripts/generate-summary-and-reports.sh
       shell: bash
 
     - name: Checkout Code
@@ -103,12 +103,26 @@ runs:
         fetch-depth: 0
         ref: ${{ steps.setup.outputs.branch_ref }}
 
+    - name: Prepare runner
+      if: steps.setup.outputs.mode == 'PR'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Create reports output directory
+        mkdir reports
+        mkdir reports/overall
+        mkdir reports/new
+        
+        PR_COMMITS_DATA=$(gh pr view ${{ steps.setup.outputs.pr_number }} --json commits --jq '.commits[] | "\(.committedDate) \(.authors[].email)"')
+        echo "$PR_COMMITS_DATA" > pr-commits-data.txt
+      shell: bash
+
     - name: Get Docker Deps
       env:
         ACTION_PATH: ${{ github.action_path }}
       run: |
-        $ACTION_PATH/makefile.sh docker-deps-get
-        $ACTION_PATH/makefile.sh sonar-ext-get
+        $ACTION_PATH/scripts/makefile.sh docker-deps-get
+        $ACTION_PATH/scripts/makefile.sh sonar-ext-get
       shell: bash
 
     - name: Execute pre-scan-script (file or inline)
@@ -147,7 +161,7 @@ runs:
         SONAR_INSTANCE_PORT: ${{ inputs.sonar-instance-port }}
         SONAR_OPTIONS: ${{inputs.sonar-options}}
         SONAR_GITROOT: ${{ github.workspace }}
-      run: $ACTION_PATH/makefile.sh scan
+      run: $ACTION_PATH/scripts/makefile.sh scan
       shell: bash
 
     - name: Scan Results
@@ -159,14 +173,15 @@ runs:
         SONAR_METRICS_PATH: ${{inputs.sonar-metrics-path}}
         SONAR_INSTANCE_PORT: ${{ inputs.sonar-instance-port }}
         SONAR_GITROOT: ${{ github.workspace }}
-      run: $ACTION_PATH/makefile.sh results
+      run: $ACTION_PATH/scripts/makefile.sh results
       shell: bash
 
     - name: Reindex SonarQube DB
       env:
         SONAR_PROJECT_NAME: ${{inputs.sonar-project-name}}
         SONAR_INSTANCE_PORT: ${{ inputs.sonar-instance-port }}
-      run: $ACTION_PATH/makefile.sh reindex
+        ACTION_PATH: ${{ github.action_path }}
+      run: $ACTION_PATH/scripts/makefile.sh reindex
       shell: bash
 
     - name: Fetch overall Sonar Issues Report
@@ -174,29 +189,31 @@ runs:
       env:
         SONAR_PROJECT_NAME: ${{inputs.sonar-project-name}}
         SONAR_INSTANCE_PORT: ${{ inputs.sonar-instance-port }}
+        ACTION_PATH: ${{ github.action_path }}
       shell: bash
       run: |
         # Fetch all issues
-        $ACTION_PATH/fetch-reports.sh create_overall_issues_report_json "reports/overall/issues-report.json"
+        $ACTION_PATH/scripts/fetch-reports.sh create_overall_issues_report_json "reports/overall/issues-report.json"
 
         # Generate the overall Issues report
-        $ACTION_PATH/generate-summary-and-reports.sh generate_issues_report_md "reports/overall/issues-report.json" "reports/overall/issues-report.md"
+        $ACTION_PATH/scripts/generate-summary-and-reports.sh generate_issues_report_md "reports/overall/issues-report.json" "reports/overall/issues-report.md"
 
     - name: Fetch New Sonar Issues Report
       shell: bash
       env:
         SONAR_PROJECT_NAME: ${{inputs.sonar-project-name}}
         SONAR_INSTANCE_PORT: ${{ inputs.sonar-instance-port }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         # Fetch New Issues
         if [ "${{ steps.setup.outputs.mode }}" == "PR" ]; then
-          $ACTION_PATH/fetch-reports.sh create_pr_issues_report_json "reports/new/issues-report.json" "pr-commits-data.txt"
+          $ACTION_PATH/scripts/fetch-reports.sh create_pr_issues_report_json "reports/new/issues-report.json" "pr-commits-data.txt"
         else
-          $ACTION_PATH/fetch-reports.sh create_n_days_issues_report_json "reports/new/issues-report.json" "${{ inputs.new-code-n-days }}"
+          $ACTION_PATH/scripts/fetch-reports.sh create_n_days_issues_report_json "reports/new/issues-report.json" "${{ inputs.new-code-n-days }}"
         fi
 
         # Generate the New Issues report
-        $ACTION_PATH/generate-summary-and-reports.sh generate_issues_report_md "reports/new/issues-report.json" "reports/new/issues-report.md"
+        $ACTION_PATH/scripts/generate-summary-and-reports.sh generate_issues_report_md "reports/new/issues-report.json" "reports/new/issues-report.md"
 
     - name: Convert Markdown overall Issues Report to HTML and PDF
       if: contains(fromJSON(inputs.reports-scopes), 'overall')
@@ -204,7 +221,7 @@ runs:
       uses: baileyjm02/markdown-to-pdf@v1
       with:
         input_path: reports/overall/issues-report.md
-        theme: $ACTION_PATH/issues-reports-styles.css
+        theme: styles/issues-reports-styles.css
         extend_default_theme: true
         output_dir: reports/overall/
         build_html: ${{ contains(fromJSON(inputs.reports-extensions), 'html') }}
@@ -216,48 +233,52 @@ runs:
       uses: baileyjm02/markdown-to-pdf@v1
       with:
         input_path: reports/new/issues-report.md
-        theme: $ACTION_PATH/issues-reports-styles.css
+        theme: styles/issues-reports-styles.css
         extend_default_theme: true
         output_dir: reports/new/
         build_html: ${{ contains(fromJSON(inputs.reports-extensions), 'html') }}
         build_pdf: ${{ contains(fromJSON(inputs.reports-extensions), 'pdf') }}
 
-    - name: Fetch overall Sonar Security Hotspots
+    - name: Fetch overall Sonar Security Hotspots Report
       shell: bash
       env:
         SONAR_PROJECT_NAME: ${{inputs.sonar-project-name}}
         SONAR_INSTANCE_PORT: ${{ inputs.sonar-instance-port }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         # Fetch all hotspots
-        $ACTION_PATH/fetch-reports.sh create_overall_hotspots_report_json "reports/overall/hotspots-report.json"
+        $ACTION_PATH/scripts/fetch-reports.sh create_overall_hotspots_report_json "reports/overall/hotspots-report.json"
 
         # Generate the overall Security Hotspots report
-        $ACTION_PATH/generate-summary-and-reports.sh generate_hotspots_report_md \
+        $ACTION_PATH/scripts/generate-summary-and-reports.sh generate_hotspots_report_md \
           "reports/overall/hotspots-report.json" \
           "reports/overall/hotspots-report.md"
 
-    - name: Fetch New Sonar Security Hotspots
+    - name: Fetch New Sonar Security Hotspots Report
       shell: bash
       env:
         SONAR_PROJECT_NAME: ${{inputs.sonar-project-name}}
         SONAR_INSTANCE_PORT: ${{ inputs.sonar-instance-port }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         # Fetch New Hotspots
         
         if [ "${{ steps.setup.outputs.mode }}" == "PR" ]; then
-          $ACTION_PATH/fetch-reports.sh create_pr_hotspots_report_json \
+          $ACTION_PATH/scripts/fetch-reports.sh create_pr_hotspots_report_json \
             "reports/overall/hotspots-report.json" \
             "reports/new/hotspots-report.json" \
             "pr-commits-data.txt"
         else
-          $ACTION_PATH/fetch-reports.sh create_n_days_hotspots_report_json \
+          $ACTION_PATH/scripts/fetch-reports.sh create_n_days_hotspots_report_json \
             "reports/overall/hotspots-report.json" \
             "reports/new/hotspots-report.json" \
             "${{ inputs.new-code-n-days }}"
         fi
-
+        
+        echo "cat reports/new/hotspots-report.json"
+        cat reports/new/hotspots-report.json
         # Generate the New Security Hotspots report
-        $ACTION_PATH/generate-summary-and-reports.sh generate_hotspots_report_md "reports/new/hotspots-report.json" "reports/new/hotspots-report.md"
+        $ACTION_PATH/scripts/generate-summary-and-reports.sh generate_hotspots_report_md "reports/new/hotspots-report.json" "reports/new/hotspots-report.md"
 
     - name: Convert Markdown overall Security Hotspots Reports to HTML and PDF
       if: contains(fromJSON(inputs.reports-scopes), 'overall')
@@ -265,7 +286,7 @@ runs:
       uses: baileyjm02/markdown-to-pdf@v1
       with:
         input_path: reports/overall/hotspots-report.md
-        theme: $ACTION_PATH/hotspots-reports-styles.css
+        theme: styles/hotspots-reports-styles.css
         extend_default_theme: true
         output_dir: reports/overall/
         build_html: ${{ contains(fromJSON(inputs.reports-extensions), 'html') }}
@@ -277,11 +298,29 @@ runs:
       uses: baileyjm02/markdown-to-pdf@v1
       with:
         input_path: reports/new/hotspots-report.md
-        theme: $ACTION_PATH/hotspots-reports-styles.css
+        theme: styles/hotspots-reports-styles.css
         extend_default_theme: true
         output_dir: reports/new/
         build_html: ${{ contains(fromJSON(inputs.reports-extensions), 'html') }}
         build_pdf: ${{ contains(fromJSON(inputs.reports-extensions), 'pdf') }}
+
+    - name: Build artifact path list
+      shell: bash
+      id: artifact-paths
+      run: |
+        exts=(${{ join(fromJSON(inputs.reports-extensions), ' ') }})
+        
+        paths=""
+        for ext in "${exts[@]}"; do
+          paths="${paths}reports/overall/*.$ext\n"
+        done
+        echo -e "overall_artifact_paths<<EOF\n$paths\nEOF" >> $GITHUB_OUTPUT
+        
+        paths=""
+        for ext in "${exts[@]}"; do
+          paths="${paths}reports/new/*.$ext\n"
+        done
+        echo -e "new_artifact_paths<<EOF\n$paths\nEOF" >> $GITHUB_OUTPUT
 
     - name: Upload overall code reports as artifact
       if: contains(fromJSON(inputs.reports-scopes), 'overall')
@@ -289,7 +328,7 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: sonar-overall-code-reports-${{ steps.setup.outputs.started }}
-        path: reports/overall/*.${{ '{' }}${{ join(fromJSON(inputs.reports-extensions), ',') }}${{ '}' }}
+        path: ${{ steps.artifact-paths.outputs.overall_artifact_paths }}
         retention-days: ${{ inputs.reports-retention-days }}
 
     - name: Upload new code reports as artifact
@@ -298,25 +337,29 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: sonar-new-code-reports-${{ steps.setup.outputs.started }}
-        path: reports/new/*.${{ '{' }}${{ join(fromJSON(inputs.reports-extensions), ',') }}${{ '}' }}
+        path: ${{ steps.artifact-paths.outputs.new_artifact_paths }}
         retention-days: ${{ inputs.reports-retention-days }}
 
     - name: Generate SonarQube Analysis Summary
       id: sonar-summary
       env:
         SONAR_GITROOT: ${{ github.workspace }}
+        ACTION_PATH: ${{ github.action_path }}
+        SONAR_METRICS_PATH: ${{inputs.sonar-metrics-path}}
+        SONAR_PROJECT_NAME: ${{inputs.sonar-project-name}}
       shell: bash
       run: |
         if [ ${{ contains(fromJSON(inputs.reports-scopes), 'new') }} == "true" ]; then
-          new_issues_reports_link = ${{ steps.upload-new-code-reports.outputs.artifact-url || '' }}
+          new_issues_reports_link=${{ steps.upload-new-code-reports.outputs.artifact-url || '' }}
         fi
 
         if [ ${{ contains(fromJSON(inputs.reports-scopes), 'overall') }} == "true" ]; then
-          overall_issues_reports_link = ${{ steps.upload-overall-code-reports.outputs.artifact-url || '' }}
+          overall_issues_reports_link=${{ steps.upload-overall-code-reports.outputs.artifact-url || '' }}
         fi
 
-        summary=$($ACTION_PATH/generate-summary-and-reports.sh generate_sonar_analysis_summary_md \
-          "${{ steps.setup.outputs.mode }}" \
+        summary=$($ACTION_PATH/scripts/generate-summary-and-reports.sh generate_sonar_analysis_summary_md \
+          "reports/new/issues-report.json" \
+          "reports/new/hotspots-report.json" \
           "$new_issues_reports_link" \
           "$overall_issues_reports_link"
         )
@@ -338,7 +381,7 @@ runs:
       uses: peter-evans/create-or-update-comment@v4
       if: inputs.generate-pr-comment == 'true' && steps.setup.outputs.mode == 'PR'
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: 'test'
         repository: ${{ github.repository }}
         issue-number: ${{ steps.setup.outputs.pr_number }}
         edit-mode: replace
@@ -349,13 +392,13 @@ runs:
 outputs:
   sonar-overall-code-reports-artifact-id:
     description: ""
-    value: $${{ steps.upload-overall-code-reports.outputs.artifact-id }}
+    value: ${{ steps.upload-overall-code-reports.outputs.artifact-id }}
   sonar-new-code-reports-artifact-id:
     description: ""
-    value: $${{ steps.upload-new-code-reports.outputs.artifact-id }}
+    value: ${{ steps.upload-new-code-reports.outputs.artifact-id }}
   sonar-analysis-summary:
     description: ""
-    value: $${{ steps.sonar-summary.outputs.summary }}
+    value: ${{ steps.sonar-summary.outputs.summary }}
 
 branding:
   icon: "check-circle"

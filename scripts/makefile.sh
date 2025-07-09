@@ -159,14 +159,15 @@ function results() {
 
 function reindex() {
     curl -X POST -u "admin:Son@rless123" "http://localhost:${SONAR_INSTANCE_PORT}/api/issues/reindex" -d "project=${SONAR_PROJECT_NAME}"
-    LOG_FILE="/opt/sonarqube/logs/web.log"
+    LOG_FILE="/opt/sonarqube/logs/ce.log"
+    PATTERN="Executed task.*type=ISSUE_SYNC.*status=SUCCESS"
     TIMEOUT=300
     COUNT=0
 
     echo "⏳ Waiting for reindexing..."
 
     while [ $COUNT -lt $TIMEOUT ]; do
-      if grep -q "Indexing completed" "$LOG_FILE"; then
+      if docker exec "${SONAR_INSTANCE_NAME}" grep -q "$PATTERN" "$LOG_FILE"; then
         echo "✅ Reindexing completed in logs."
         exit 0
       fi
@@ -230,4 +231,4 @@ function uninstall() {
     rm -rf "${HOME}/.${CLI_NAME}"
 }
 
-$*
+"$@"
