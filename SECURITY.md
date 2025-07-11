@@ -2,20 +2,13 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+We currently support the [latest release](https://github.com/VIDADv1/scanwise/releases/latest) of Scanwise. Please update before reporting issues.
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a vulnerability in this GitHub Action:
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+- Please **do not disclose it publicly**.
+- Report it privately by opening a [GitHub security advisory](https://github.com/VIDADv1/scanwise/security/advisories/new).
+
+We aim to respond within a few business days and fix any verified issues promptly.
