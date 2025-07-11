@@ -93,7 +93,7 @@ runs:
         else
           echo "mode=BRANCH" >> $GITHUB_OUTPUT
           echo "pr_number=" >> $GITHUB_OUTPUT
-          echo "branch_ref=$REF}" >> $GITHUB_OUTPUT
+          echo "branch_ref=$REF" >> $GITHUB_OUTPUT
         fi
 
         chmod +x $ACTION_PATH/scripts/makefile.sh
