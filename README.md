@@ -33,7 +33,7 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 
 ```yaml
 - name: Scanwise Scan
-  uses: VIDADv1/scanwise@main
+  uses: VIDADv1/scanwise@v1
   with:
     sonar-source-path: 'src'
     sonar-project-name: 'my-project'
@@ -70,7 +70,7 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 ### Basic Usage
 
 ```yaml
-- uses: VIDADv1/scanwise@main
+- uses: VIDADv1/scanwise@v1
   with:
     sonar-source-path: 'src'
     sonar-project-name: 'my-project'
@@ -79,7 +79,7 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 ### With Custom Reports
 
 ```yaml
-- uses: VIDADv1/scanwise@main
+- uses: VIDADv1/scanwise@v1
   with:
     sonar-source-path: 'packages/frontend'
     sonar-project-name: 'frontend'
@@ -169,7 +169,7 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 ### With Pre-scan Script
 
 ```yaml
-- uses: VIDADv1/scanwise@main
+- uses: VIDADv1/scanwise@v1
   with:
     sonar-project-name: 'backend'
     pre-scan-script: |

@@ -406,5 +406,5 @@ outputs:
     value: ${{ steps.scanwise-summary.outputs.summary }}
 
 branding:
-  icon: "check-circle"
-  color: "green"
+  icon: "target"
+  color: "blue"
