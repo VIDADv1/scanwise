@@ -1,0 +1,45 @@
+body {
+    margin: 1rem;
+    max-width: unset;
+}
+
+@media print {
+    @page {
+        size: landscape;
+    }
+    table {
+        font-size: x-small;
+    }
+}
+
+table {
+    display: grid;
+    width: 100%;
+    border-collapse: collapse;
+    grid-template-columns: 1fr 1fr 2fr 1fr 1fr 2fr 1fr 2fr;
+    overflow: unset;
+    font-size: small;
+}
+
+thead, tbody {
+    display: contents;
+}
+
+tr {
+    display: contents;
+}
+
+tbody tr:nth-of-type(even) td {
+    background-color: #f6f8fa;
+}
+
+td:nth-child(3), th:nth-child(3),
+td:nth-child(6), th:nth-child(6),
+td:nth-child(8), th:nth-child(8) {
+    word-break: break-all;
+}
+
+th, td {
+    word-break: normal;
+    white-space: normal;
+}

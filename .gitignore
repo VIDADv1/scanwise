@@ -1,4 +1,4 @@
-# Sonarless
+# Scanwise
 sonar-metrics.json
 
 # Logs
@@ -137,3 +137,7 @@ lib
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# IDE
+.idea
+.vscode

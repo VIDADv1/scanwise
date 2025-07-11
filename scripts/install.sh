@@ -32,24 +32,27 @@ echo_failed_command() {
 trap echo_failed_command EXIT
 
 # Global variables
-export SONARLESS_SOURCES="https://raw.githubusercontent.com/gitricko/sonarless/main/makefile.sh"  # URL where makefile.sh is hosted
+export SCANWISE_SOURCES="https://raw.githubusercontent.com/VIDADv1/scanwise/main/scripts/makefile.sh"  # URL where makefile.sh is hosted
 
-if [ -z "$SONARLESS_DIR" ]; then
-    SONARLESS_DIR="$HOME/.sonarless"
+if [ -z "$SCANWISE_DIR" ]; then
+    SCANWISE_DIR="$HOME/.scanwise"
 fi
-export SONARLESS_DIR
+export SCANWISE_DIR
 
 # Local variables
-sonarless_bashrc="${HOME}/.bashrc"
-sonarless_zshrc="${HOME}/.zshrc"
+scanwise_bashrc="${HOME}/.bashrc"
+scanwise_zshrc="${HOME}/.zshrc"
 
 
-echo ''
-echo '                                               _ '                
-echo '               ___   ___   _ __    __ _  _ __ | |  ___  ___  ___ '
-echo '              / __| / _ \ | "_ \  / _` || "__|| | / _ \/ __|/ __| '
-echo '              \__ \| (_) || | | || (_| || |   | ||  __/\__ \\__ \ '
-echo '              |___/ \___/ |_| |_| \__,_||_|   |_| \___||___/|___/ '
+cat <<'EOF'
+               _____                 __          __ _
+              / ____|                \ \        / /(_)
+             | (___    ___  __ _  _ __\ \  /\  / /  _  ___   ___
+              \___ \  / __|/ _` || '_ \\ \/  \/ /  | |/ __| / _ \
+              ____) || (__| (_| || | | |\  /\  /   | |\__ \|  __/
+             |_____/  \___|\__,_||_| |_| \/  \/    |_||___/ \___|
+
+EOF
 echo ''
 echo ''
 echo '                                                     Now attempting installation...'
@@ -58,23 +61,23 @@ echo ''
 
 # Sanity checks
 
-echo "Looking for a previous installation of SONARLESS..."
-if [ -d "$SONARLESS_DIR" ]; then
-	echo "SONARLESS found."
+echo "Looking for a previous installation of SCANWISE..."
+if [ -d "$SCANWISE_DIR" ]; then
+	echo "SCANWISE found."
 	echo ""
 	echo "======================================================================================================"
-	echo " You already have SONARLESS installed."
-	echo " SONARLESS was found at:"
+	echo " You already have SCANWISE installed."
+	echo " SCANWISE was found at:"
 	echo ""
-	echo "    ${SONARLESS_DIR}"
+	echo "    ${SCANWISE_DIR}"
 	echo ""
 	echo " Please consider uninstalling and reinstall."
 	echo ""
-	echo "    $ sonarless uninstall "
+	echo "    $ scanwise uninstall "
 	echo ""
 	echo "               or "
 	echo ""
-	echo "    $ rm -rf ${SONARLESS_DIR}"
+	echo "    $ rm -rf ${SCANWISE_DIR}"
 	echo ""
 	echo "======================================================================================================"
 	echo ""
@@ -117,45 +120,45 @@ if ! command -v sed > /dev/null; then
 	exit 1
 fi
 
-echo "Installing Sonarless helper scripts..."
+echo "Installing Scanwise helper scripts..."
 
 # Create directory structure
-mkdir -p "${SONARLESS_DIR}"
+mkdir -p "${SCANWISE_DIR}"
 
 set +e
 # Download makefile.sh depending which env (git or over curl)
-# Check if you are in sonarless git
-LOCAL_FILE_EXIST=$([[ -d ./.git ]] && git remote get-url origin | grep -q sonarless && [[ -s ./makefile.sh ]]; echo "$?")
+# Check if you are in scanwise git
+LOCAL_FILE_EXIST=$([[ -d ./.git ]] && git remote get-url origin | grep -q scanwise && [[ -s ./scripts/makefile.sh ]]; echo "$?")
 if [[ "${LOCAL_FILE_EXIST}" -eq "0" ]]; then
 	echo "* Copying from local git..."
-	cp -f ./makefile.sh "${SONARLESS_DIR}"
+	cp -f ./scripts/makefile.sh "${SCANWISE_DIR}"
 else
 	echo "* Downloading..."
-	curl --fail --location --progress-bar "${SONARLESS_SOURCES}" > "${SONARLESS_DIR}/makefile.sh"
-	chmod +x "${SONARLESS_DIR}/makefile.sh"
+	curl --fail --location --progress-bar "${SCANWISE_SOURCES}" > "${SCANWISE_DIR}/makefile.sh"
+	chmod +x "${SCANWISE_DIR}/makefile.sh"
 fi
 
 # Create alias in ~/.bashrc ~/.zshrc if available
-if [[ ! -s "${sonarless_bashrc}" ]] || ! grep -q 'sonarless' "${sonarless_bashrc}" ;then 
-	echo "alias sonarless='$HOME/.sonarless/makefile.sh'" >> "${sonarless_bashrc}"
+if [[ ! -s "${scanwise_bashrc}" ]] || ! grep -q 'scanwise' "${scanwise_bashrc}" ;then
+	echo "alias scanwise='$HOME/.scanwise/makefile.sh'" >> "${scanwise_bashrc}"
 fi
 
-if [[ ! -s "${sonarless_zshrc}" ]] || ! grep -q 'sonarless' "${sonarless_zshrc}"; then 
-	echo "alias sonarless='$HOME/.sonarless/makefile.sh'" >> "${sonarless_zshrc}"
+if [[ ! -s "${scanwise_zshrc}" ]] || ! grep -q 'scanwise' "${scanwise_zshrc}"; then
+	echo "alias scanwise='$HOME/.scanwise/makefile.sh'" >> "${scanwise_zshrc}"
 fi
 
 # Dynamically create the alias during installation so that use can use it
-if ! command -v sonarless > /dev/null; then
-	alias sonarless='$HOME/.sonarless/makefile.sh'
+if ! command -v scanwise > /dev/null; then
+	alias scanwise='$HOME/.scanwise/makefile.sh'
 fi
 
 echo ""
 echo "Please open a new terminal, or run the following in the existing one:"
 echo ""
-echo "    alias sonarless='$HOME/.sonarless/makefile.sh' "
+echo "    alias scanwise='$HOME/.scanwise/makefile.sh' "
 echo ""
 echo "Then issue the following command:"
 echo ""
-echo "    sonarless help"
+echo "    scanwise help"
 echo ""
 echo "Enjoy!!!"
