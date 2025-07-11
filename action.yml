@@ -86,14 +86,14 @@ runs:
       run: |
         echo "started=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
 
-        if [ "$EVENT_NAME" == "workflow_dispatch" ]; then
-          echo "mode=BRANCH" >> $GITHUB_OUTPUT
-          echo "pr_number=" >> $GITHUB_OUTPUT
-          echo "branch_ref=$REF}" >> $GITHUB_OUTPUT
-        else
+        if [ "$EVENT_NAME" == "pull_request" ]; then
           echo "mode=PR" >> $GITHUB_OUTPUT
           echo "pr_number=$PR_NB" >> $GITHUB_OUTPUT
           echo "branch_ref=$HEAD_REF" >> $GITHUB_OUTPUT
+        else
+          echo "mode=BRANCH" >> $GITHUB_OUTPUT
+          echo "pr_number=" >> $GITHUB_OUTPUT
+          echo "branch_ref=$REF}" >> $GITHUB_OUTPUT
         fi
 
         chmod +x $ACTION_PATH/scripts/makefile.sh
@@ -108,7 +108,6 @@ runs:
         ref: ${{ steps.setup.outputs.branch_ref }}
 
     - name: Prepare runner
-      if: steps.setup.outputs.mode == 'PR'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
@@ -117,8 +116,10 @@ runs:
         mkdir reports/overall
         mkdir reports/new
         
-        PR_COMMITS_DATA=$(gh pr view ${{ steps.setup.outputs.pr_number }} --json commits --jq '.commits[] | "\(.committedDate) \(.authors[].email)"')
-        echo "$PR_COMMITS_DATA" > pr-commits-data.txt
+        if [ "${{ steps.setup.outputs.mode }}" == "PR" ]; then
+          PR_COMMITS_DATA=$(gh pr view ${{ steps.setup.outputs.pr_number }} --json commits --jq '.commits[] | "\(.committedDate) \(.authors[].email)"')
+          echo "$PR_COMMITS_DATA" > pr-commits-data.txt
+        fi
       shell: bash
 
     - name: Get Docker Deps
