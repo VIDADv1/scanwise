@@ -110,11 +110,16 @@ runs:
     - name: Prepare runner
       env:
         GH_TOKEN: ${{ github.token }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         # Create reports output directory
         mkdir reports
         mkdir reports/overall
         mkdir reports/new
+
+        # Create and copy styles directory
+        mkdir -p $GITHUB_WORKSPACE/styles
+        cp $ACTION_PATH/styles/*.css $GITHUB_WORKSPACE/styles/ || true
         
         if [ "${{ steps.setup.outputs.mode }}" == "PR" ]; then
           PR_COMMITS_DATA=$(gh pr view ${{ steps.setup.outputs.pr_number }} --json commits --jq '.commits[] | "\(.committedDate) \(.authors[].email)"')
@@ -386,7 +391,6 @@ runs:
       uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
       if: inputs.generate-pr-comment == 'true' && steps.setup.outputs.mode == 'PR'
       with:
-        token: 'test'
         repository: ${{ github.repository }}
         issue-number: ${{ steps.setup.outputs.pr_number }}
         edit-mode: replace
