@@ -31,6 +31,16 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 
 ### GitHub Actions
 
+#### Required Permissions
+Make sure to grant the following permissions in your workflow:
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+```
+
+#### Usage example
 ```yaml
 - name: Scanwise Scan
   uses: VIDADv1/scanwise@v1
@@ -41,6 +51,9 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
     reports-extensions: '["html", "md", "json"]'
     reports-retention-days: '7'
     new-code-n-days: '3d'
+    pre-scan-script: |
+      echo "Running pre-scan setup..."
+      # Add your custom setup commands here
 ```
 
 ## 🔧 Configuration Options
@@ -65,32 +78,43 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 
 </details>
 
-## 📚 Usage Examples
+## 🔍 Preview
 
-### Basic Usage
-
-```yaml
-- uses: VIDADv1/scanwise@v1
-  with:
-    sonar-source-path: 'src'
-    sonar-project-name: 'my-project'
-```
-
-### With Custom Reports
+### Configuration used
 
 ```yaml
-- uses: VIDADv1/scanwise@v1
-  with:
-    sonar-source-path: 'packages/frontend'
-    sonar-project-name: 'frontend'
-    reports-scopes: '["overall", "new"]'
-    reports-extensions: '["html", "md"]'
-    reports-retention-days: '14'
+# .github/workflows/scanwise.yml
+name: 'Scanwise Analysis'
+ 
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+ 
+jobs:
+  scanwise:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Scanwise Scan
+        uses: VIDADv1/scanwise@v1
+        with:
+          reports-scopes: '["overall", "new"]'
+          reports-extensions: '["md"]'
+          reports-retention-days: '1'
+          generate-pr-comment: true
 ```
 
-#### Summary / PR comment example
+### GitHub Summary / PR comment
 <blockquote>
-<details>
+<details open>
 <summary><i>Show</i></summary>
 
 # 🌟 **Scanwise Analysis Summary for scanwise** 🌟
@@ -130,7 +154,7 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 </details>
 </blockquote>
 
-#### Issues Report example
+### Overall Issues Report (.md)
 <blockquote>
 <details>
 <summary><i>Show</i></summary>
@@ -152,7 +176,7 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 </details>
 </blockquote>
 
-#### Hotspots Report example
+### Overall Hotspots Report (.md)
 <blockquote>
 <details>
 <summary><i>Show</i></summary>
@@ -165,17 +189,6 @@ curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | b
 | insecure-conf | LOW | integration-test/src/main/java/com/example/BadCodeExample.java | 39 | test@example.com | java:S4507 | Make sure this debug feature is deactivated before delivering the code in production. |
 </details>
 </blockquote>
-
-### With Pre-scan Script
-
-```yaml
-- uses: VIDADv1/scanwise@v1
-  with:
-    sonar-project-name: 'backend'
-    pre-scan-script: |
-      echo "Running pre-scan setup..."
-      # Add your custom setup commands here
-```
 
 ## 🤝 Contributing
 
