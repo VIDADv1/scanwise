@@ -228,7 +228,7 @@ runs:
     - name: Convert Markdown overall Issues Report to HTML and PDF
       if: contains(fromJSON(inputs.reports-scopes), 'overall')
         && (contains(fromJSON(inputs.reports-extensions), 'html') || contains(fromJSON(inputs.reports-extensions), 'pdf'))
-      uses: baileyjm02/markdown-to-pdf@1be26775add5f94fb55d4a2ce36ff7cad23b8dd0 # v1.2.0
+      uses: VIDADv1/markdown-to-pdf@f4a3f83427873ea9422a9ae8c6c598ebdfe6fca1 # v1.2.0
       with:
         input_path: reports/overall/issues-report.md
         theme: styles/issues-reports-styles.css
@@ -240,7 +240,7 @@ runs:
     - name: Convert Markdown New Issues Report to HTML and PDF
       if: contains(fromJSON(inputs.reports-scopes), 'new')
         && (contains(fromJSON(inputs.reports-extensions), 'html') || contains(fromJSON(inputs.reports-extensions), 'pdf'))
-      uses: baileyjm02/markdown-to-pdf@1be26775add5f94fb55d4a2ce36ff7cad23b8dd0 # v1.2.0
+      uses: VIDADv1/markdown-to-pdf@f4a3f83427873ea9422a9ae8c6c598ebdfe6fca1 # v1.2.0
       with:
         input_path: reports/new/issues-report.md
         theme: styles/issues-reports-styles.css
@@ -293,7 +293,7 @@ runs:
     - name: Convert Markdown overall Security Hotspots Reports to HTML and PDF
       if: contains(fromJSON(inputs.reports-scopes), 'overall')
         && (contains(fromJSON(inputs.reports-extensions), 'html') || contains(fromJSON(inputs.reports-extensions), 'pdf'))
-      uses: baileyjm02/markdown-to-pdf@1be26775add5f94fb55d4a2ce36ff7cad23b8dd0 # v1.2.0
+      uses: VIDADv1/markdown-to-pdf@f4a3f83427873ea9422a9ae8c6c598ebdfe6fca1 # v1.2.0
       with:
         input_path: reports/overall/hotspots-report.md
         theme: styles/hotspots-reports-styles.css
@@ -305,7 +305,7 @@ runs:
     - name: Convert Markdown New Security Hotspots Reports to HTML and PDF
       if: contains(fromJSON(inputs.reports-scopes), 'new')
         && (contains(fromJSON(inputs.reports-extensions), 'html') || contains(fromJSON(inputs.reports-extensions), 'pdf'))
-      uses: baileyjm02/markdown-to-pdf@1be26775add5f94fb55d4a2ce36ff7cad23b8dd0 # v1.2.0
+      uses: VIDADv1/markdown-to-pdf@f4a3f83427873ea9422a9ae8c6c598ebdfe6fca1 # v1.2.0
       with:
         input_path: reports/new/hotspots-report.md
         theme: styles/hotspots-reports-styles.css
