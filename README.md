@@ -26,7 +26,7 @@ Enhanced fork of [gitricko/sonarless](https://github.com/gitricko/sonarless) wit
 
 ```bash
 # Install the enhanced CLI
-curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/install.sh" | bash
+curl -s "https://raw.githubusercontent.com/VIDADv1/scanwise/main/scripts/install.sh" | bash
 ```
 
 ### GitHub Actions
