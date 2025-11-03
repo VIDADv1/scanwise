@@ -80,7 +80,6 @@ function generate_scanwise_analysis_summary_md() {
   local reliability_rating=$(echo "$overall_metrics_json_path" | jq -r '.component.measures[] | select(.metric == "reliability_rating") | .value')
   local security_rating=$(echo "$overall_metrics_json_path" | jq -r '.component.measures[] | select(.metric == "security_rating") | .value')
   local coverage=$(echo "$overall_metrics_json_path" | jq -r '.component.measures[] | select(.metric == "coverage") | .value')
-  local coverage_percentage=$(awk "BEGIN { c = $coverage + 0; printf \"%.2f\", c * 100 }")
   local duplicated_lines_density=$(echo "$overall_metrics_json_path" | jq -r '.component.measures[] | select(.metric == "duplicated_lines_density") | .value')
   local quality_gate_status=$(echo "$overall_metrics_json_path" | jq -r '.component.measures[] | select(.metric == "quality_gate_details") | .value | fromjson | .level')
 
@@ -134,7 +133,7 @@ function generate_scanwise_analysis_summary_md() {
   summary="$summary- **💎 Maintainability:** $sqale_stars\n"
   summary="$summary- **⚙️ Reliability:** $reliability_stars\n"
   summary="$summary- **🔐 Security:** $security_stars\n"
-  summary="$summary- **🛡 Test Coverage:** $coverage_percentage%\n"
+  summary="$summary- **🛡 Test Coverage:** $coverage%\n"
   summary="$summary- **🌀 Duplicated Lines Density:** $duplicated_lines_density%\n\n"
 
   summary="$summary### Quality Gate\n"
